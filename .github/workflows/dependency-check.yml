@@ -1,0 +1,25 @@
+name: Dependency Check (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+ scan:
+   runs-on: ubuntu-latest
+
+   steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: unit3_2
+        path: ./unit3/unit3_2
+        format: HTML
+
+    - name: Upload Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-report
+        path: reports

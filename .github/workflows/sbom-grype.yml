@@ -1,0 +1,31 @@
+name: SBOM and Grype
+
+on:
+  workflow_dispatch:
+
+jobs:
+ sbom:
+   runs-on: ubuntu-latest
+
+   steps:
+
+   - uses: actions/checkout@v4
+
+   - name: Generate SBOM
+     uses: anchore/sbom-action@v0
+     with:
+       path: ./unit3/unit3_2
+       format: cyclonedx-json
+       output-file: sbom.json
+
+   - name: Upload SBOM Artifact
+     uses: actions/upload-artifact@v4
+     with:
+       name: sbom-report
+       path: sbom.json
+
+   - name: Vulnerability Scan
+     uses: anchore/scan-action@v3
+     with:
+       path: ./
+       fail-build: false
