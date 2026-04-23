@@ -14,7 +14,7 @@ jobs:
    - name: Generate SBOM
      uses: anchore/sbom-action@v0
      with:
-       path: ./unit3/unit3_2
+       path: ./server/app.js
        format: cyclonedx-json
        output-file: sbom.json
 
