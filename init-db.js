@@ -1,6 +1,9 @@
 const fs = require("fs");
 const path = require("path");
+const bcrypt = require("bcrypt"); // ✅ added for hashing
 const { DEFAULT_DB_FILE, openDatabase } = require("./db");
+
+const SALT_ROUNDS = 10;
 
 async function initializeDatabase() {
   const analysisDir = path.dirname(DEFAULT_DB_FILE);
@@ -12,11 +15,14 @@ async function initializeDatabase() {
 
   const db = openDatabase(DEFAULT_DB_FILE);
 
+  // -------------------------------
+  // Create tables
+  // -------------------------------
   await db.run(`
     CREATE TABLE users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
+      password TEXT NOT NULL, -- stored as hash
       role TEXT NOT NULL,
       display_name TEXT NOT NULL
     )
@@ -36,7 +42,7 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       owner_id INTEGER NOT NULL,
       title TEXT NOT NULL,
-      body TEXT NOT NULL,
+      body TEXT NOT NULL, -- may contain HTML (handle safely in frontend)
       pinned INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY(owner_id) REFERENCES users(id)
@@ -53,24 +59,28 @@ async function initializeDatabase() {
     )
   `);
 
+  // -------------------------------
+  // Hash passwords before storing
+  // -------------------------------
+  const adminPass = await bcrypt.hash("admin123", SALT_ROUNDS);
+  const alicePass = await bcrypt.hash("wonderland", SALT_ROUNDS);
+  const bobPass = await bcrypt.hash("builder", SALT_ROUNDS);
+
+  // -------------------------------
+  // Insert users
+  // -------------------------------
   await db.run(
     "INSERT INTO users (username, password, role, display_name) VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)",
     [
-      "admin",
-      "admin123",
-      "admin",
-      "Administrator",
-      "alice",
-      "wonderland",
-      "student",
-      "Alice Analyst",
-      "bob",
-      "builder",
-      "student",
-      "Bob Builder"
+      "admin", adminPass, "admin", "Administrator",
+      "alice", alicePass, "student", "Alice Analyst",
+      "bob", bobPass, "student", "Bob Builder"
     ]
   );
 
+  // -------------------------------
+  // Insert settings
+  // -------------------------------
   await db.run(
     "INSERT INTO settings (user_id, status_message, theme, email_opt_in) VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)",
     [
@@ -89,6 +99,10 @@ async function initializeDatabase() {
     ]
   );
 
+  // -------------------------------
+  // Insert notes
+  // NOTE: HTML is intentional for XSS testing
+  // -------------------------------
   await db.run(
     "INSERT INTO notes (owner_id, title, body, pinned, created_at) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)",
     [
