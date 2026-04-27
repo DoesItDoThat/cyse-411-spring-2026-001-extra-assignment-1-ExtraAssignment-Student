@@ -1,33 +1,34 @@
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    },
-    credentials: "same-origin",
-    ...options
-  });
-
-  const isJson = (response.headers.get("content-type") || "").includes("application/json");
-  const body = isJson ? await response.json() : await response.text();
-
-  if (!response.ok) {
-    const message = typeof body === "object" && body && body.error ? body.error : response.statusText;
-    throw new Error(message);
+(async function bootstrapAdmin() {
+  try {
+    const user = await loadCurrentUser();
+    if (!user) {
+      document.getElementById("admin-warning").textContent = "Please log in first.";
+      return;
+    }
+    
+    if (user.role !== "admin") {
+      document.getElementById("admin-warning").textContent =
+        "Access denied.";
+      return;
+    } else {
+      document.getElementById("admin-warning").textContent = "Authenticated as admin.";
+    }
+    const result = await api("/api/admin/users");
+    document.getElementById("admin-users").innerHTML = result.users
+      .map(
+        (entry) => `
+          <tr>
+            <td>${entry.id}</td>
+            <td>${entry.username}</td>
+            <td>${entry.role}</td>
+            <td>${entry.displayName}</td>
+            <td>${entry.noteCount}</td>
+          </tr>
+        `
+      )
+      .join("");
+  } catch (error) {
+    document.getElementById("admin-warning").textContent = error.message;
   }
-
-  return body;
-}
-
-async function loadCurrentUser() {
-  const data = await api("/api/me");
-  return data.user;
-}
-
-function writeJson(elementId, value) {
-  const target = document.getElementById(elementId);
-
-  if (target) {
-    target.textContent = JSON.stringify(value, null, 2);
-  }
-}
+})();
+ 
